@@ -70,6 +70,7 @@ class _ScanPageState extends State<ScanPage> {
 
   Future<void> _connect(ScanResult r) async {
     await FlutterBluePlus.stopScan();
+    if (!mounted) return;
     final n = _name(r);
     final name = n.isEmpty ? r.device.remoteId.str : n;
 
@@ -81,7 +82,7 @@ class _ScanPageState extends State<ScanPage> {
 
     try {
       await r.device.connect(
-  license: License.free,
+  license: License.nonprofit,
   timeout: const Duration(seconds: 10),
 );
       if (!mounted) return;
@@ -183,8 +184,7 @@ class _ScanPageState extends State<ScanPage> {
                             )
                           : ListView.separated(
                               itemCount: list.length,
-                              separatorBuilder: (_, __) =>
-                                  const Divider(height: 1),
+                              separatorBuilder: (_, _) => const Divider(height: 1),
                               itemBuilder: (_, i) {
                                 final r = list[i];
                                 final name = _name(r);
