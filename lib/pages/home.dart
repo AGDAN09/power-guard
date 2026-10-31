@@ -25,7 +25,7 @@ class hometest extends StatelessWidget {
                   builder: (context, snapshot) {
                     final results = snapshot.data ?? [];
                     if (results.isEmpty) {
-                      return const Center(child: Text("Belum ada perangkat"));
+                      return const Center(child: Text("ga ada device"));
                     }
                     return ListView.builder(
                       itemCount: results.length,
@@ -47,7 +47,7 @@ class hometest extends StatelessWidget {
               ),
               const SizedBox(height: 20),
               const Text(
-                "Bluetooth",
+                "Pencet nanti scan",
                 style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
               ElevatedButton(
