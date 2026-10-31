@@ -4,7 +4,7 @@ import 'package:permission_handler/permission_handler.dart';
 class BleController extends GetxController {
   Future scanDevices() async{
     if (await Permission.bluetoothScan.request().isGranted && await Permission.bluetoothConnect.request().isGranted){
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 10));
+      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 30));
     }
   }
   Stream<List<ScanResult>> get scanResults => FlutterBluePlus.scanResults;

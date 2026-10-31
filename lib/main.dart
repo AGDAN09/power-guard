@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'app_theme.dart';
 import 'power_page.dart';
+// budi george poke wokwok
+final ValueNotifier<ScanResult?> connectedDevice =
+    ValueNotifier<ScanResult?>(null);
+
+String scanName(ScanResult r) {
+  return r.advertisementData.advName.isNotEmpty
+      ? r.advertisementData.advName
+      : r.device.platformName;
+}
 
 void main() => runApp(const MyApp());
 
@@ -12,7 +22,7 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'POWER GUARD APP',
-      theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
+      theme: buildDarkTheme(),
       home: const PowerPage(),
     );
   }
@@ -59,19 +69,27 @@ class _ScanPageState extends State<ScanPage> {
     return ok;
   }
 
+  Future<void> _turnOn() async {
+    try {
+      if (await _requestPermissions()) {
+        await FlutterBluePlus.turnOn();
+      }
+    } catch (_) {}
+  }
+
   Future<void> _toggleScan() async {
     if (FlutterBluePlus.isScanningNow) {
       await FlutterBluePlus.stopScan();
       return;
     }
     if (!await _requestPermissions()) return;
-    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 30));
   }
 
   Future<void> _connect(ScanResult r) async {
     await FlutterBluePlus.stopScan();
     if (!mounted) return;
-    final n = _name(r);
+    final n = scanName(r);
     final name = n.isEmpty ? r.device.remoteId.str : n;
 
     showDialog(
@@ -82,11 +100,20 @@ class _ScanPageState extends State<ScanPage> {
 
     try {
       await r.device.connect(
-  license: License.nonprofit,
-  timeout: const Duration(seconds: 10),
-);
+        license: License.nonprofit,
+        timeout: const Duration(seconds: 30),
+      );
       if (!mounted) return;
-      Navigator.pop(context); // tutup loading
+      Navigator.pop(context);
+      connectedDevice.value = r;
+      final sub = r.device.connectionState.listen((s) {
+        if (s == BluetoothConnectionState.disconnected &&
+            connectedDevice.value?.device.remoteId == r.device.remoteId) {
+          connectedDevice.value = null;
+        }
+      });
+      r.device.cancelWhenDisconnected(sub, delayed: true, next: true);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Terhubung ke $name')),
       );
@@ -99,65 +126,41 @@ class _ScanPageState extends State<ScanPage> {
     }
   }
 
-  String _name(ScanResult r) {
-    return r.advertisementData.advName.isNotEmpty
-        ? r.advertisementData.advName
-        : r.device.platformName;
-  }
-
-  String _jarak(int rssi) {
-    if (rssi >= -55) return 'Sangat dekat';
-    if (rssi >= -70) return 'Dekat';
-    if (rssi >= -85) return 'Sedang';
-    return 'Jauh';
-  }
-
-  Color _warna(int rssi) {
-    if (rssi >= -55) return Colors.green;
-    if (rssi >= -70) return Colors.lightGreen;
-    if (rssi >= -85) return Colors.orange;
-    return Colors.red;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Scan Bluetooth'),
+        backgroundColor: AppColors.bg,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        title: const Text(
+          'Scan Bluetooth',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Chip(
-              avatar: Icon(
-                _btOn ? Icons.bluetooth : Icons.bluetooth_disabled,
-                size: 18,
-                color: _btOn ? Colors.blue : Colors.grey,
-              ),
-              label: Text(_btOn ? 'ON' : 'OFF'),
-            ),
+            padding: const EdgeInsets.only(right: 16),
+            child: _OnOffPill(on: _btOn),
           ),
         ],
       ),
       body: Column(
         children: [
-          if (!_btOn)
-            MaterialBanner(
-              content: const Text('Bluetooth HP mati.'),
-              actions: [
-                TextButton(
-                  onPressed: () async {
-                    if (await _requestPermissions()) {
-                      await FlutterBluePlus.turnOn();
-                    }
-                  },
-                  child: const Text('Aktifkan Bluetooth'),
-                ),
-              ],
+          if (!_btOn) _BtOffBanner(onTap: _turnOn),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: Panel(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+              child: Row(
+                children: [
+                  const Expanded(child: Text('Hanya yang bernama')),
+                  NeonSwitch(
+                    value: _onlyNamed,
+                    onChanged: (v) => setState(() => _onlyNamed = v),
+                  ),
+                ],
+              ),
             ),
-          SwitchListTile(
-            title: const Text('Hanya yang bernama'),
-            value: _onlyNamed,
-            onChanged: (v) => setState(() => _onlyNamed = v),
           ),
           Expanded(
             child: StreamBuilder<List<ScanResult>>(
@@ -166,60 +169,59 @@ class _ScanPageState extends State<ScanPage> {
               builder: (context, snap) {
                 var list = List<ScanResult>.from(snap.data ?? []);
                 if (_onlyNamed) {
-                  list = list.where((r) => _name(r).isNotEmpty).toList();
+                  list = list.where((r) => scanName(r).isNotEmpty).toList();
                 }
                 list.sort((a, b) => b.rssi.compareTo(a.rssi));
 
                 return Column(
                   children: [
                     Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: Text('${list.length} perangkat ditemukan'),
+                      padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${list.length} perangkat ditemukan',
+                              style: const TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          StreamBuilder<bool>(
+                            stream: FlutterBluePlus.isScanning,
+                            initialData: false,
+                            builder: (context, s) => (s.data ?? false)
+                                ? const SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: AppColors.cyan,
+                                    ),
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
                     ),
                     Expanded(
                       child: list.isEmpty
                           ? const Center(
-                              child: Text('Belum ada perangkat.\nTekan Scan.',
-                                  textAlign: TextAlign.center),
+                              child: Text(
+                                'Belum ada perangkat.\nTekan Scan.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: AppColors.muted),
+                              ),
                             )
-                          : ListView.separated(
+                          : ListView.builder(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 0, 16, 96),
                               itemCount: list.length,
-                              separatorBuilder: (_, _) => const Divider(height: 1),
-                              itemBuilder: (_, i) {
-                                final r = list[i];
-                                final name = _name(r);
-                                final isEsp =
-                                    name.toUpperCase().startsWith('ESP');
-                                return ListTile(
-                                  leading: Icon(
-                                    isEsp ? Icons.memory : Icons.bluetooth,
-                                    color: isEsp ? Colors.indigo : null,
-                                  ),
-                                  title: Text(
-                                    name.isEmpty ? '(tanpa nama)' : name,
-                                    style: TextStyle(
-                                      fontWeight: isEsp
-                                          ? FontWeight.bold
-                                          : FontWeight.normal,
-                                    ),
-                                  ),
-                                  subtitle: Text(r.device.remoteId.str),
-                                  onTap: () => _connect(r),
-                                  trailing: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text('${r.rssi} dBm',
-                                          style: TextStyle(
-                                              color: _warna(r.rssi),
-                                              fontWeight: FontWeight.bold)),
-                                      Text(_jarak(r.rssi),
-                                          style:
-                                              const TextStyle(fontSize: 12)),
-                                    ],
-                                  ),
-                                );
-                              },
+                              itemBuilder: (_, i) => _DeviceTile(
+                                r: list[i],
+                                onTap: () => _connect(list[i]),
+                              ),
                             ),
                     ),
                   ],
@@ -236,11 +238,176 @@ class _ScanPageState extends State<ScanPage> {
           final scanning = snap.data ?? false;
           return FloatingActionButton.extended(
             onPressed: _btOn ? _toggleScan : null,
+            backgroundColor: AppColors.cyan,
+            foregroundColor: Colors.black,
             icon: Icon(scanning ? Icons.stop : Icons.search),
-            label: Text(scanning ? 'Stop' : 'Scan'),
+            label: Text(
+              scanning ? 'Stop' : 'Scan',
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
           );
         },
       ),
     );
   }
 }
+
+class _OnOffPill extends StatelessWidget {
+  final bool on;
+  const _OnOffPill({required this.on});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = on ? AppColors.green : AppColors.red;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: 0.15),
+        //borderRadius: //BorderRadius.circular(20),
+        border: Border.all(color: c.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(on ? Icons.check : Icons.close, size: 14, color: c),
+          const SizedBox(width: 4),
+          Text(
+            on ? 'ON' : 'OFF',
+            style: TextStyle(
+              color: c,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _BtOffBanner extends StatelessWidget {
+  final VoidCallback onTap;
+  const _BtOffBanner({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: InkWell(
+        //borderRadius: //BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.panel,
+            //borderRadius: //BorderRadius.circular(16),
+            border: Border.all(color: AppColors.red.withValues(alpha: 0.8)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.bluetooth_disabled, color: Colors.white70),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bluetooth HP mati',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Ketuk untuk mengaktifkan dan memindai perangkat',
+                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeviceTile extends StatelessWidget {
+  final ScanResult r;
+  final VoidCallback onTap;
+  const _DeviceTile({required this.r, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final name = scanName(r);
+    final upper = name.toUpperCase();
+    final isEsp = upper.startsWith('ESP') || upper.contains('POWERGUARD');
+    final c = jarakColor(r.rssi);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: AppColors.panel,
+        //borderRadius: //BorderRadius.circular(16),
+        child: InkWell(
+          //borderRadius: //BorderRadius.circular(16),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              //borderRadius: //BorderRadius.circular(16),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Row(
+              children: [
+                Icon(isEsp ? Icons.memory : Icons.bluetooth,
+                    color: Colors.white),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name.isEmpty ? '(tanpa nama)' : name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        r.device.remoteId.str,
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '${r.rssi} dBm',
+                      style: TextStyle(
+                        color: c,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      jarakLabel(r.rssi),
+                      style: TextStyle(color: c, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}//AMBATUKAAAAAAAAAMMMMMMMMMMMMMMMMMM!!!!!!!!!!!
