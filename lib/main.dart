@@ -1,3 +1,4 @@
+import 'power_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -11,7 +12,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'POWER GUARD APP',
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
-      home: const ScanPage(),
+      home: const PowerPage(),
     );
   }
 }
