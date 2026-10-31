@@ -1,6 +1,7 @@
-import 'power_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'power_page.dart';
 
 void main() => runApp(const MyApp());
 
@@ -37,19 +38,70 @@ class _ScanPageState extends State<ScanPage> {
 
   bool get _btOn => _adapter == BluetoothAdapterState.on;
 
+  Future<bool> _requestPermissions() async {
+    final result = await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+      Permission.locationWhenInUse,
+    ].request();
+
+    final ok = result.values.every((s) => s.isGranted);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content:
+              const Text('Izin Bluetooth dan Lokasi diperlukan untuk scan.'),
+          action: SnackBarAction(
+              label: 'Pengaturan', onPressed: openAppSettings),
+        ),
+      );
+    }
+    return ok;
+  }
+
   Future<void> _toggleScan() async {
     if (FlutterBluePlus.isScanningNow) {
       await FlutterBluePlus.stopScan();
-    } else {
-      await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+      return;
+    }
+    if (!await _requestPermissions()) return;
+    await FlutterBluePlus.startScan(timeout: const Duration(seconds: 15));
+  }
+
+  Future<void> _connect(ScanResult r) async {
+    await FlutterBluePlus.stopScan();
+    final n = _name(r);
+    final name = n.isEmpty ? r.device.remoteId.str : n;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await r.device.connect(
+  license: License.free,
+  timeout: const Duration(seconds: 10),
+);
+      if (!mounted) return;
+      Navigator.pop(context); // tutup loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Terhubung ke $name')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // tutup loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal terhubung ke $name')),
+      );
     }
   }
 
   String _name(ScanResult r) {
-    final n = r.advertisementData.advName.isNotEmpty
+    return r.advertisementData.advName.isNotEmpty
         ? r.advertisementData.advName
         : r.device.platformName;
-    return n;
   }
 
   String _jarak(int rssi) {
@@ -70,7 +122,7 @@ class _ScanPageState extends State<ScanPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('POWER GUARD APP'),
+        title: const Text('Scan Bluetooth'),
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 12),
@@ -92,7 +144,11 @@ class _ScanPageState extends State<ScanPage> {
               content: const Text('Bluetooth HP mati.'),
               actions: [
                 TextButton(
-                  onPressed: () => FlutterBluePlus.turnOn(),
+                  onPressed: () async {
+                    if (await _requestPermissions()) {
+                      await FlutterBluePlus.turnOn();
+                    }
+                  },
                   child: const Text('Aktifkan Bluetooth'),
                 ),
               ],
@@ -148,18 +204,18 @@ class _ScanPageState extends State<ScanPage> {
                                     ),
                                   ),
                                   subtitle: Text(r.device.remoteId.str),
+                                  onTap: () => _connect(r),
                                   trailing: Column(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.center,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.end,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Text('${r.rssi} dBm',
                                           style: TextStyle(
                                               color: _warna(r.rssi),
                                               fontWeight: FontWeight.bold)),
                                       Text(_jarak(r.rssi),
-                                          style: const TextStyle(fontSize: 12)),
+                                          style:
+                                              const TextStyle(fontSize: 12)),
                                     ],
                                   ),
                                 );
