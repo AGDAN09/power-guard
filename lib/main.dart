@@ -1,21 +1,34 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+<<<<<<< HEAD
 void main() => runApp(const MyApp());
+=======
+import 'pages/home.dart';
+
+void main() {
+  runApp(const MyApp());
+}
+>>>>>>> 4e1ad3cd43b1487d35969d664d88ade996ffd67d
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+<<<<<<< HEAD
       debugShowCheckedModeBanner: false,
       title: 'POWER GUARD APP',
       theme: ThemeData(colorSchemeSeed: Colors.indigo, useMaterial3: true),
       home: const ScanPage(),
+=======
+      home: hometest()
+>>>>>>> 4e1ad3cd43b1487d35969d664d88ade996ffd67d
     );
   }
 }
 
+<<<<<<< HEAD
 class ScanPage extends StatefulWidget {
   const ScanPage({super.key});
   @override
@@ -187,3 +200,5 @@ class _ScanPageState extends State<ScanPage> {
     );
   }
 }
+=======
+>>>>>>> 4e1ad3cd43b1487d35969d664d88ade996ffd67d
