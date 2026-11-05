@@ -18,9 +18,8 @@ TextStyle _labelStyle(BuildContext c) => TextStyle(
 // Warna khusus metrik: versi terang dibuat lebih gelap supaya terbaca di latar putih
 Color _ampColor(BuildContext c) => isDark(c)
     ? const Color.fromARGB(255, 0, 245, 49)
-    : const Color(0xFF00A82D);
-Color _wattColor(BuildContext c) =>
-    isDark(c) ? AppColors.amber : const Color(0xFFB88700);
+    : AppColors.lightGreen;
+Color _wattColor(BuildContext c) => warnColor(c);
 
 class PowerPage extends StatefulWidget {
   const PowerPage({super.key});
@@ -190,7 +189,7 @@ class _PowerPageState extends State<PowerPage> {
                                 fontWeight: FontWeight.w700,
                                 color: _relayOn
                                     ? Theme.of(context).colorScheme.onSurface
-                                    : AppColors.red,
+                                    : dangerColor(context),
                               ),
                             ),
                           ],
@@ -211,18 +210,18 @@ class _PowerPageState extends State<PowerPage> {
               _Badge(
                 icon: Icons.shield,
                 label: voltOk ? 'Aman' : 'Tidak aman',
-                color: voltOk ? AppColors.green : AppColors.red,
+                color: voltOk ? okColor(context) : dangerColor(context),
               ),
               _Badge(
                 icon: Icons.speed,
                 label: loadOk ? 'Beban' : 'Beban tinggi',
-                color: loadOk ? AppColors.green : wattC,
+                color: loadOk ? okColor(context) : wattC,
               ),
               // TODO: sambungkan ke sensor suhu ESP32
-              const _Badge(
+              _Badge(
                 icon: Icons.thermostat,
                 label: 'Suhu',
-                color: AppColors.green,
+                color: okColor(context),
               ),
             ],
           ),
@@ -267,7 +266,7 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = connected ? AppColors.green : mutedColor(context);
+    final c = connected ? okColor(context) : mutedColor(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
@@ -305,7 +304,7 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = running ? AppColors.red : accentColor(context);
+    final c = running ? dangerColor(context) : accentColor(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -317,13 +316,22 @@ class _StartButton extends StatelessWidget {
           shape: BoxShape.circle,
           color: c.withValues(alpha: 0.14),
           border: Border.all(color: c, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: c.withValues(alpha: 0.35),
-              blurRadius: 24,
-              spreadRadius: 1,
-            ),
-          ],
+          // gelap: glow neon, terang: bayangan tipis
+          boxShadow: isDark(context)
+              ? [
+                  BoxShadow(
+                    color: c.withValues(alpha: 0.35),
+                    blurRadius: 24,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: c.withValues(alpha: 0.18),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
         ),
         child: Text(
           running ? 'STOP' : 'MULAI',
@@ -547,7 +555,14 @@ class _ChartCard extends StatelessWidget {
                     ),
                   )
                 : CustomPaint(
-                    painter: _LinePainter(data, decimals, color, muted, grid),
+                    painter: _LinePainter(
+                      data,
+                      decimals,
+                      color,
+                      muted,
+                      grid,
+                      glow: isDark(context),
+                    ),
                   ),
           ),
         ],
@@ -562,7 +577,15 @@ class _LinePainter extends CustomPainter {
   final Color color;
   final Color mutedCol;
   final Color gridCol;
-  _LinePainter(this.data, this.decimals, this.color, this.mutedCol, this.gridCol);
+  final bool glow; // glow neon cuma di mode gelap
+  _LinePainter(
+    this.data,
+    this.decimals,
+    this.color,
+    this.mutedCol,
+    this.gridCol, {
+    this.glow = true,
+  });
 
   void _text(
     Canvas c,
@@ -654,14 +677,16 @@ class _LinePainter extends CustomPainter {
           ).createShader(Rect.fromLTWH(padL, padT, w, h)),
       );
     }
-    canvas.drawPath(
-      path,
-      Paint()
-        ..color = color.withValues(alpha: 0.35)
-        ..strokeWidth = 6
-        ..style = PaintingStyle.stroke
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
-    );
+    if (glow) {
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color.withValues(alpha: 0.35)
+          ..strokeWidth = 6
+          ..style = PaintingStyle.stroke
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6),
+      );
+    }
     canvas.drawPath(
       path,
       Paint()

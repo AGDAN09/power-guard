@@ -251,7 +251,7 @@ class _ScanPageState extends State<ScanPage> {
           return FloatingActionButton.extended(
             onPressed: _btOn ? _toggleScan : null,
             backgroundColor: accentColor(context),
-            foregroundColor: Colors.black,
+            foregroundColor: onAccentColor(context),
             icon: Icon(scanning ? Icons.stop : Icons.search),
             label: Text(
               scanning ? 'Stop' : 'Scan',
@@ -270,12 +270,12 @@ class _OnOffPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = on ? AppColors.green : AppColors.red;
+    final c = on ? okColor(context) : dangerColor(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: c.withValues(alpha: 0.15),
-        //borderRadius: //BorderRadius.circular(20),
+        borderRadius: cornerRadius(context, 20),
         border: Border.all(color: c.withValues(alpha: 0.4)),
       ),
       child: Row(
@@ -306,14 +306,14 @@ class _BtOffBanner extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: InkWell(
-        //borderRadius: //BorderRadius.circular(16),
+        borderRadius: cornerRadius(context),
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: panelColor(context),
-            //borderRadius: //BorderRadius.circular(16),
-            border: Border.all(color: AppColors.red.withValues(alpha: 0.8)),
+            borderRadius: cornerRadius(context),
+            border: Border.all(color: dangerColor(context).withValues(alpha: 0.8)),
           ),
           child: Row(
             children: [
@@ -356,20 +356,20 @@ class _DeviceTile extends StatelessWidget {
     final name = scanName(r);
     final upper = name.toUpperCase();
     final isEsp = upper.startsWith('ESP') || upper.contains('POWERGUARD');
-    final c = jarakColor(r.rssi);
+    final c = jarakColor(r.rssi, context);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
         color: panelColor(context),
-        //borderRadius: //BorderRadius.circular(16),
+        borderRadius: cornerRadius(context),
         child: InkWell(
-          //borderRadius: //BorderRadius.circular(16),
+          borderRadius: cornerRadius(context),
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              //borderRadius: //BorderRadius.circular(16),
+              borderRadius: cornerRadius(context),
               border: Border.all(color: borderColor(context)),
             ),
             child: Row(
