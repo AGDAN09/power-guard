@@ -1,9 +1,10 @@
+import 'theme_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'app_theme.dart';
 import 'power_page.dart';
-// budi george poke wokwok
+
 final ValueNotifier<ScanResult?> connectedDevice =
     ValueNotifier<ScanResult?>(null);
 
@@ -13,17 +14,28 @@ String scanName(ScanResult r) {
       : r.device.platformName;
 }
 
-void main() => runApp(const MyApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await ThemeController.load();
+  runApp(const MyApp());
+}
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'POWER GUARD APP',
-      theme: buildDarkTheme(),
-      home: const PowerPage(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: ThemeController.mode,
+      builder: (context, mode, child) {
+        return MaterialApp(
+          debugShowCheckedModeBanner: false,
+          title: 'POWER GUARD APP',
+          theme: ThemeController.light,
+          darkTheme: ThemeController.dark,
+          themeMode: mode,
+          home: const PowerPage(),
+        );
+      },
     );
   }
 }
@@ -130,7 +142,7 @@ class _ScanPageState extends State<ScanPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.bg,
+        backgroundColor: bgColor(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         title: const Text(
@@ -182,8 +194,8 @@ class _ScanPageState extends State<ScanPage> {
                           Expanded(
                             child: Text(
                               '${list.length} perangkat ditemukan',
-                              style: const TextStyle(
-                                color: AppColors.muted,
+                              style: TextStyle(
+                                color: mutedColor(context),
                                 fontSize: 13,
                               ),
                             ),
@@ -192,12 +204,12 @@ class _ScanPageState extends State<ScanPage> {
                             stream: FlutterBluePlus.isScanning,
                             initialData: false,
                             builder: (context, s) => (s.data ?? false)
-                                ? const SizedBox(
+                                ? SizedBox(
                                     width: 14,
                                     height: 14,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      color: AppColors.cyan,
+                                      color: accentColor(context),
                                     ),
                                   )
                                 : const SizedBox.shrink(),
@@ -207,11 +219,11 @@ class _ScanPageState extends State<ScanPage> {
                     ),
                     Expanded(
                       child: list.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Text(
                                 'Belum ada perangkat.\nTekan Scan.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: AppColors.muted),
+                                style: TextStyle(color: mutedColor(context)),
                               ),
                             )
                           : ListView.builder(
@@ -238,7 +250,7 @@ class _ScanPageState extends State<ScanPage> {
           final scanning = snap.data ?? false;
           return FloatingActionButton.extended(
             onPressed: _btOn ? _toggleScan : null,
-            backgroundColor: AppColors.cyan,
+            backgroundColor: accentColor(context),
             foregroundColor: Colors.black,
             icon: Icon(scanning ? Icons.stop : Icons.search),
             label: Text(
@@ -299,26 +311,29 @@ class _BtOffBanner extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.panel,
+            color: panelColor(context),
             //borderRadius: //BorderRadius.circular(16),
             border: Border.all(color: AppColors.red.withValues(alpha: 0.8)),
           ),
-          child: const Row(
+          child: Row(
             children: [
-              Icon(Icons.bluetooth_disabled, color: Colors.white70),
-              SizedBox(width: 16),
+              Icon(Icons.bluetooth_disabled, color: mutedColor(context)),
+              const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
+                    const Text(
                       'Bluetooth HP mati',
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       'Ketuk untuk mengaktifkan dan memindai perangkat',
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      style: TextStyle(
+                        color: mutedColor(context),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -346,7 +361,7 @@ class _DeviceTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: AppColors.panel,
+        color: panelColor(context),
         //borderRadius: //BorderRadius.circular(16),
         child: InkWell(
           //borderRadius: //BorderRadius.circular(16),
@@ -355,12 +370,14 @@ class _DeviceTile extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               //borderRadius: //BorderRadius.circular(16),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: borderColor(context)),
             ),
             child: Row(
               children: [
-                Icon(isEsp ? Icons.memory : Icons.bluetooth,
-                    color: Colors.white),
+                Icon(
+                  isEsp ? Icons.memory : Icons.bluetooth,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(
@@ -378,9 +395,9 @@ class _DeviceTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         r.device.remoteId.str,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.muted,
+                          color: mutedColor(context),
                         ),
                       ),
                     ],
@@ -410,4 +427,4 @@ class _DeviceTile extends StatelessWidget {
       ),
     );
   }
-}//AMBATUKAAAAAAAAAMMMMMMMMMMMMMMMMMM!!!!!!!!!!!
+}

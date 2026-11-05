@@ -4,14 +4,23 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'app_theme.dart';
 import 'main.dart';
+import 'theme_controller.dart';
 
 const bool kDataDariEsp = false;
-const TextStyle _labelStyle = TextStyle(
-  fontSize: 11,
-  letterSpacing: 1.2,
-  fontWeight: FontWeight.w700,
-  color: AppColors.muted,
-);
+
+TextStyle _labelStyle(BuildContext c) => TextStyle(
+      fontSize: 11,
+      letterSpacing: 1.2,
+      fontWeight: FontWeight.w700,
+      color: mutedColor(c),
+    );
+
+// Warna khusus metrik: versi terang dibuat lebih gelap supaya terbaca di latar putih
+Color _ampColor(BuildContext c) => isDark(c)
+    ? const Color.fromARGB(255, 0, 245, 49)
+    : const Color(0xFF00A82D);
+Color _wattColor(BuildContext c) =>
+    isDark(c) ? AppColors.amber : const Color(0xFFB88700);
 
 class PowerPage extends StatefulWidget {
   const PowerPage({super.key});
@@ -87,9 +96,13 @@ class _PowerPageState extends State<PowerPage> {
     final voltOk = !hasData || (_last(_volt) >= 200 && _last(_volt) <= 240);
     final loadOk = !hasData || _last(_watt) <= 500;
 
+    final cyan = accentColor(context);
+    final ampC = _ampColor(context);
+    final wattC = _wattColor(context);
+
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: AppColors.bg,
+        backgroundColor: bgColor(context),
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         titleSpacing: 20,
@@ -107,8 +120,9 @@ class _PowerPageState extends State<PowerPage> {
             builder: (context, dev, child) =>
                 _StatusPill(connected: dev != null),
           ),
+          const ThemeButton(),
           IconButton(
-            icon: const Icon(Icons.bluetooth_searching, color: AppColors.cyan),
+            icon: Icon(Icons.bluetooth_searching, color: cyan),
             tooltip: 'Scan Bluetooth',
             onPressed: _openScan,
           ),
@@ -135,20 +149,17 @@ class _PowerPageState extends State<PowerPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const _MetricLabel(
-                              Icons.bolt, 'TEGANGAN', AppColors.cyan),
-                          _BigNumber(fmt(_last(_volt), 0), 'V', AppColors.cyan),
+                          _MetricLabel(Icons.bolt, 'TEGANGAN', cyan),
+                          _BigNumber(fmt(_last(_volt), 0), 'V', cyan),
                           const SizedBox(height: 14),
-                          const _MetricLabel(
-                              Icons.speed, 'ARUS', const Color.fromARGB(255, 0, 245, 49)),
-                          _BigNumber(
-                              fmt(_last(_amp), 2), 'A',  const Color.fromARGB(255, 0, 245, 49)),
+                          _MetricLabel(Icons.speed, 'ARUS', ampC),
+                          _BigNumber(fmt(_last(_amp), 2), 'A', ampC),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const Divider(color: AppColors.border, height: 36),
+                Divider(color: borderColor(context), height: 36),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
@@ -156,15 +167,14 @@ class _PowerPageState extends State<PowerPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const _MetricLabel(
-                            Icons.flash_on, 'DAYA', AppColors.amber),
-                        _BigNumber(fmt(_last(_watt), 0), 'W', AppColors.amber),
+                        _MetricLabel(Icons.flash_on, 'DAYA', wattC),
+                        _BigNumber(fmt(_last(_watt), 0), 'W', wattC),
                       ],
                     ),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        const Text('RELAY CONTROL', style: _labelStyle),
+                        Text('RELAY CONTROL', style: _labelStyle(context)),
                         const SizedBox(height: 6),
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -178,7 +188,9 @@ class _PowerPageState extends State<PowerPage> {
                               _relayOn ? 'ON' : 'OFF',
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
-                                color: _relayOn ? Colors.white : AppColors.red,
+                                color: _relayOn
+                                    ? Theme.of(context).colorScheme.onSurface
+                                    : AppColors.red,
                               ),
                             ),
                           ],
@@ -204,7 +216,7 @@ class _PowerPageState extends State<PowerPage> {
               _Badge(
                 icon: Icons.speed,
                 label: loadOk ? 'Beban' : 'Beban tinggi',
-                color: loadOk ? AppColors.green : AppColors.amber,
+                color: loadOk ? AppColors.green : wattC,
               ),
               // TODO: sambungkan ke sensor suhu ESP32
               const _Badge(
@@ -224,7 +236,7 @@ class _PowerPageState extends State<PowerPage> {
           Stack(
             alignment: Alignment.center,
             children: [
-              const Text('GRAFIK MONITORING', style: _labelStyle),
+              Text('GRAFIK MONITORING', style: _labelStyle(context)),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -232,7 +244,7 @@ class _PowerPageState extends State<PowerPage> {
                   icon: const Icon(Icons.refresh, size: 16),
                   label: const Text('Reset'),
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.muted,
+                    foregroundColor: mutedColor(context),
                     visualDensity: VisualDensity.compact,
                   ),
                 ),
@@ -240,9 +252,9 @@ class _PowerPageState extends State<PowerPage> {
             ],
           ),
           const SizedBox(height: 8),
-          _ChartCard('Tegangan', 'V', _volt, 1, AppColors.cyan),
-          _ChartCard('Arus', 'A', _amp, 2, const Color.fromARGB(255, 0, 245, 49)),
-          _ChartCard('Daya', 'W', _watt, 1, AppColors.amber),
+          _ChartCard('Tegangan', 'V', _volt, 1, cyan),
+          _ChartCard('Arus', 'A', _amp, 2, ampC),
+          _ChartCard('Daya', 'W', _watt, 1, wattC),
         ],
       ),
     );
@@ -255,12 +267,13 @@ class _StatusPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = connected ? AppColors.green : AppColors.muted;
+    final c = connected ? AppColors.green : mutedColor(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.panel,
+        color: panelColor(context),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: borderColor(context)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -292,7 +305,7 @@ class _StartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = running ? AppColors.red : AppColors.cyan;
+    final c = running ? AppColors.red : accentColor(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -339,7 +352,7 @@ class _MetricLabel extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: color),
         const SizedBox(width: 6),
-        Text(text, style: _labelStyle),
+        Text(text, style: _labelStyle(context)),
       ],
     );
   }
@@ -400,7 +413,7 @@ class _Badge extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           label,
-          style: const TextStyle(fontSize: 12, color: Colors.white70),
+          style: TextStyle(fontSize: 12, color: mutedColor(context)),
         ),
       ],
     );
@@ -436,12 +449,12 @@ class _InfoPanel extends StatelessWidget {
                 signal,
                 trailing: GestureDetector(
                   onTap: onChange,
-                  child: const Padding(
-                    padding: EdgeInsets.all(4),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
                     child: Text(
                       'Ganti Perangkat',
                       style: TextStyle(
-                        color: AppColors.cyan,
+                        color: accentColor(context),
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                       ),
@@ -467,7 +480,7 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        CircleIcon(icon: icon, color: Colors.white70, size: 42),
+        CircleIcon(icon: icon, color: mutedColor(context), size: 42),
         const SizedBox(width: 14),
         Expanded(
           child: Column(
@@ -475,7 +488,7 @@ class _InfoRow extends StatelessWidget {
             children: [
               Text(
                 label,
-                style: const TextStyle(fontSize: 11, color: AppColors.muted),
+                style: TextStyle(fontSize: 11, color: mutedColor(context)),
               ),
               const SizedBox(height: 2),
               Text(
@@ -505,6 +518,10 @@ class _ChartCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final muted = mutedColor(context);
+    final grid =
+        Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.08);
+
     return Panel(
       margin: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -523,13 +540,15 @@ class _ChartCard extends StatelessWidget {
             height: 190,
             width: double.infinity,
             child: data.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'Tekan MULAI untuk melihat data',
-                      style: TextStyle(color: AppColors.muted),
+                      style: TextStyle(color: muted),
                     ),
                   )
-                : CustomPaint(painter: _LinePainter(data, decimals, color)),
+                : CustomPaint(
+                    painter: _LinePainter(data, decimals, color, muted, grid),
+                  ),
           ),
         ],
       ),
@@ -541,7 +560,9 @@ class _LinePainter extends CustomPainter {
   final List<double> data;
   final int decimals;
   final Color color;
-  _LinePainter(this.data, this.decimals, this.color);
+  final Color mutedCol;
+  final Color gridCol;
+  _LinePainter(this.data, this.decimals, this.color, this.mutedCol, this.gridCol);
 
   void _text(
     Canvas c,
@@ -558,7 +579,7 @@ class _LinePainter extends CustomPainter {
         text: s,
         style: TextStyle(
           fontSize: size,
-          color: col ?? AppColors.muted,
+          color: col ?? mutedCol,
           fontWeight: weight,
         ),
       ),
@@ -588,7 +609,7 @@ class _LinePainter extends CustomPainter {
     double xOf(int i) => padL + w * i / (_PowerMax.n - 1);
 
     final grid = Paint()
-      ..color = Colors.white.withValues(alpha: 0.07)
+      ..color = gridCol
       ..strokeWidth = 1;
     for (var i = 0; i <= 4; i++) {
       final v = lo + (hi - lo) * i / 4;
@@ -673,6 +694,7 @@ class _LinePainter extends CustomPainter {
 class _PowerMax {
   static const int n = 10;
 }
+
 class _SimBanner extends StatelessWidget {
   const _SimBanner();
 
@@ -685,7 +707,6 @@ class _SimBanner extends StatelessWidget {
 
         if (espAsli && kDataDariEsp) return const SizedBox.shrink();
 
-
         final String detail;
         if (dev == null) {
           detail = 'Belum terhubung ke ESP32. Angka hanya contoh.';
@@ -693,21 +714,22 @@ class _SimBanner extends StatelessWidget {
           detail = 'Terhubung, tapi data ESP32 belum dibaca.';
         }
 
+        final amber = _wattColor(context);
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: AppColors.amber.withValues(alpha: 0.10),
+            color: amber.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.amber.withValues(alpha: 0.5)),
+            border: Border.all(color: amber.withValues(alpha: 0.5)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'SIMULASI',
                 style: TextStyle(
-                  color: AppColors.amber,
+                  color: amber,
                   fontWeight: FontWeight.w800,
                   fontSize: 12,
                 ),

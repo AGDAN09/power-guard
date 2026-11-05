@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 //gak penting jir, cuma patokan
 class AppColors {
+  // mode gelap wok
   static const bg = Color(0xFF06060C);
   static const panel = Color(0xFF14141C);
   static const border = Color(0xFF23232E);
@@ -11,7 +12,26 @@ class AppColors {
   static const green = Color(0xFF2ED573);
   static const red = Color(0xFFFF4757);
   static const muted = Color(0xFF8A8A99);
+
+  // mode terang wok
+  static const lightBg = Color(0xFFF4F6FA);
+  static const lightPanel = Color(0xFFFFFFFF);
+  static const lightBorder = Color(0xFFDDE1EA);
+  static const lightCyan = Color(0xFF0097A7);
+  static const lightMuted = Color(0xFF6B6F7B);
 }
+
+// warna mengikuti mode gelap atau terang
+bool isDark(BuildContext c) => Theme.of(c).brightness == Brightness.dark;
+Color bgColor(BuildContext c) => isDark(c) ? AppColors.bg : AppColors.lightBg;
+Color panelColor(BuildContext c) =>
+    isDark(c) ? AppColors.panel : AppColors.lightPanel;
+Color borderColor(BuildContext c) =>
+    isDark(c) ? AppColors.border : AppColors.lightBorder;
+Color mutedColor(BuildContext c) =>
+    isDark(c) ? AppColors.muted : AppColors.lightMuted;
+Color accentColor(BuildContext c) =>
+    isDark(c) ? AppColors.cyan : AppColors.lightCyan;
 
 ThemeData buildDarkTheme() {
   return ThemeData(
@@ -19,6 +39,15 @@ ThemeData buildDarkTheme() {
     brightness: Brightness.dark,
     colorSchemeSeed: AppColors.cyan,
     scaffoldBackgroundColor: AppColors.bg,
+  );
+}
+
+ThemeData buildLightTheme() {
+  return ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.light,
+    colorSchemeSeed: AppColors.lightCyan,
+    scaffoldBackgroundColor: AppColors.lightBg,
   );
 }
 
@@ -40,9 +69,9 @@ class Panel extends StatelessWidget {
       margin: margin,
       padding: padding,
       decoration: BoxDecoration(
-        color: AppColors.panel,
+        color: panelColor(context),
         //borderRadius: //BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: borderColor(context)),
       ),
       child: child,
     );
@@ -56,8 +85,11 @@ class GradientLine extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 2,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color.fromARGB(255, 255, 179, 92), AppColors.cyan]),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [
+          const Color.fromARGB(255, 255, 179, 92),
+          accentColor(context),
+        ]),
       ),
     );
   }
@@ -82,8 +114,8 @@ class CircleIcon extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.bg,
-        border: Border.all(color: AppColors.border),
+        color: bgColor(context),
+        border: Border.all(color: borderColor(context)),
       ),
       child: Icon(icon, color: color, size: size * 0.45),
     );
@@ -99,19 +131,21 @@ class NeonSwitch extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = isDark(context);
     return Switch(
       value: value,
       onChanged: onChanged,
       thumbColor: WidgetStateProperty.all(Colors.white),
       trackColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? AppColors.cyan
-            : const Color(0xFF3A3A48),
+            ? accentColor(context)
+            : (dark ? const Color(0xFF3A3A48) : const Color(0xFFB8BDC9)),
       ),
       trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
     );
   }
 }
+
 String jarakLabel(int rssi) {
   if (rssi >= -55) return 'Sangat dekat';
   if (rssi >= -70) return 'Dekat';
